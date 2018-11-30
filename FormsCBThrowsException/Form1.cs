@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -28,7 +29,7 @@ namespace FormsCBThrowsException
 			}
 			catch (Exception a)
 			{
-				throw new Exception("B", a);
+				throw new ProtectedFromASyncUnfoldException(new Exception("B", a));
 			}
 		}
 
@@ -50,6 +51,43 @@ namespace FormsCBThrowsException
 
 		public void SetMessageInTextBox(string x) =>
 			BeginInvoke((MethodInvoker)(() => _textBoxToSetTextOnGivenLastCall.Text = x) );
-		
+	}
+
+	public class ProtectedFromASyncUnfoldException : Exception
+	{
+		public Exception InternalException { get;  }
+		public ProtectedFromASyncUnfoldException() {	}
+
+		public ProtectedFromASyncUnfoldException(string message) 
+			: base(message) {	}
+
+		/// <summary>
+		/// Hack of exception.
+		/// Setting InternalException instead of innerException 
+		/// to avoid strange behaviour of async exception handling in windows forms
+		/// that otherwise throws away all but the base exception
+		/// </summary>
+		/// <param name="message"></param>
+		/// <param name="innerException">transformed to InternalException</param>
+		public ProtectedFromASyncUnfoldException(string message, Exception innerException) 
+			: base(message)
+		{
+			InternalException = innerException;
+		}
+
+		public ProtectedFromASyncUnfoldException(Exception innerException) 
+			: this(innerException.Message, innerException) { }
+
+		protected ProtectedFromASyncUnfoldException(SerializationInfo info, StreamingContext context) 
+			: base(info, context) { }
+
+		public override string ToString()
+		{
+			return base.ToString() 
+				+ Environment.NewLine 
+				+ Environment.NewLine 
+				+ "---------------------" 
+				+ InternalException?.ToString();
+		}
 	}
 }
